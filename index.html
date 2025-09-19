@@ -3,11 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Traffic Forecasting Console</title>
+    <title>Flowcast • Predictive Traffic Alerts</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop stop-color='%237aa2ff'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230b0f14'/%3E%3Cpath d='M22 50l10-16h-8l18-20-10 16h8L22 50z' fill='url(%23g)'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
     <header class="app-header">
@@ -15,9 +17,14 @@
             <div class="logo">↯</div>
             <div class="title">
                 <h1>Flowcast</h1>
-                <p>Short‑term traffic forecasting (5–30 min)</p>
+                <p>Predictive traffic alerts for everyday commuters</p>
             </div>
         </div>
+        <nav class="main-nav">
+            <a href="#dashboard" class="active">Dashboard</a>
+            <a href="#plan">Plan Route</a>
+            <a href="#benefits">Why Flowcast</a>
+        </nav>
         <div class="header-actions">
             <label class="toggle">
                 <input type="checkbox" id="alertsToggle" checked>
@@ -27,7 +34,7 @@
         </div>
     </header>
 
-    <main class="container">
+    <main class="container" id="dashboard">
         <section class="kpis" aria-label="Key performance indicators">
             <div class="kpi">
                 <div class="kpi-label">Avg Speed</div>
@@ -83,6 +90,9 @@
                             <option value="east">East</option>
                             <option value="west">West</option>
                         </select>
+                        <label class="chip"><input type="checkbox" id="filterHigh" checked> High</label>
+                        <label class="chip"><input type="checkbox" id="filterMed" checked> Medium</label>
+                        <label class="chip"><input type="checkbox" id="filterLow" checked> Low</label>
                     </div>
                 </div>
                 <div class="map-canvas" id="mapCanvas" aria-hidden="true"></div>
@@ -90,21 +100,66 @@
             </div>
         </section>
 
-        <section class="explain" aria-label="Model explanation">
-            <h2>How it works</h2>
-            <p>
-                Live traffic streams (speed, volume, GPS) are fused with weather and incident data.
-                A Random Forest model produces 5–30 minute forecasts. When thresholds are exceeded,
-                alerts help prioritize routing and adaptive signals.
-            </p>
+        <section class="planner" id="plan" aria-label="Plan your route">
+            <div class="panel">
+                <div class="panel-header"><h2>Plan your route</h2></div>
+                <form id="routeForm" class="route-grid">
+                    <label>
+                        <span>From</span>
+                        <input id="fromInput" type="text" placeholder="Start location" required>
+                    </label>
+                    <label>
+                        <span>To</span>
+                        <input id="toInput" type="text" placeholder="Destination" required>
+                    </label>
+                    <label>
+                        <span>Depart</span>
+                        <input id="timeInput" type="time">
+                    </label>
+                    <button class="primary" type="submit">Get Route</button>
+                </form>
+                <div id="routeResult" class="route-result" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <section class="benefits" id="benefits" aria-label="Benefits">
+            <div class="benefit">
+                <h3>Reduced Traffic Congestion</h3>
+                <p>Early predictions and alerts enable proactive action to avoid jams.</p>
+            </div>
+            <div class="benefit">
+                <h3>Improved Road Safety</h3>
+                <p>Timely warnings about congestion, accidents, or hazards enhance safety.</p>
+            </div>
+            <div class="benefit">
+                <h3>Enhanced Commuter Experience</h3>
+                <p>Reliable, real‑time info helps choose optimal routes and reduce stress.</p>
+            </div>
+            <div class="benefit">
+                <h3>Environmental Benefits</h3>
+                <p>Smoother flow reduces idling and emissions, lowering carbon footprint.</p>
+            </div>
+            <div class="benefit">
+                <h3>Optimized Traffic Management</h3>
+                <p>Authorities dynamically adjust signals and deploy resources efficiently.</p>
+            </div>
+            <div class="benefit">
+                <h3>Scalable and Adaptable</h3>
+                <p>Designed to grow with new data sources and model improvements.</p>
+            </div>
         </section>
     </main>
 
     <footer class="app-footer">
-        <span>Prototype UI • Dark theme</span>
-        <a href="#" id="exportBtn" class="ghost">Export snapshot</a>
+        <span>Flowcast © 2025</span>
+        <div class="footer-actions">
+            <a href="#plan" class="ghost">Plan a route</a>
+            <a href="#" id="installBtn" class="ghost">Install app</a>
+        </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

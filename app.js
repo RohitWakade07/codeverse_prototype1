@@ -1,14 +1,12 @@
 const canvas = document.getElementById('forecastCanvas');
-const ctx = canvas.getContext('2d');
 const legend = document.getElementById('legend');
 const alertsList = document.getElementById('alertsList');
 const mapCanvas = document.getElementById('mapCanvas');
+const routeForm = document.getElementById('routeForm');
+const routeResult = document.getElementById('routeResult');
 
-const colors = {
-    baseline: '#7aa2ff',
-    forecast: '#22d3ee',
-    risk: '#f59e0b'
-};
+const colors = { baseline: '#7aa2ff', forecast: '#22d3ee', risk: '#f59e0b' };
+let chart;
 
 function generateSeries(points, base = 50, noise = 10, trend = 0.2) {
     const series = [];
@@ -20,48 +18,32 @@ function generateSeries(points, base = 50, noise = 10, trend = 0.2) {
 }
 
 function drawChart(metric = 'speed') {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const width = canvas.width - 60;
-    const height = canvas.height - 60;
-    const originX = 40;
-    const originY = canvas.height - 30;
+    const observed = generateSeries(24, 48, 8, -0.1);
+    const forecast = generateSeries(12, observed[observed.length - 1], 10, metric === 'risk' ? -0.3 : 0.3);
+    const labels = [...Array(observed.length).keys()].map(i => `T-${observed.length - i}`)
+        .concat([...Array(forecast.length).keys()].map(i => `+${i + 1}m`));
+    const data = observed.concat(forecast);
 
-    // grid
-    ctx.strokeStyle = 'rgba(255,255,255,.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-        const y = originY - (height / 5) * i;
-        ctx.beginPath(); ctx.moveTo(originX, y); ctx.lineTo(originX + width, y); ctx.stroke();
-    }
-
-    const baseline = generateSeries(24, 48, 8, -0.1);
-    const forecast = generateSeries(12, baseline[baseline.length - 1], 10, metric === 'risk' ? -0.3 : 0.3);
-
-    const maxVal = Math.max(...baseline, ...forecast) * 1.2;
-    const xStep = width / (baseline.length + forecast.length);
-
-    function line(points, color, offset = 0) {
-        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-        points.forEach((v, i) => {
-            const x = originX + (i + offset) * xStep;
-            const y = originY - (v / maxVal) * height;
-            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-    }
-
-    line(baseline, colors.baseline, 0);
-    line(forecast, colors.forecast, baseline.length);
-
-    // split marker
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = 'rgba(255,255,255,.15)';
-    ctx.beginPath();
-    const splitX = originX + baseline.length * xStep;
-    ctx.moveTo(splitX, originY - height);
-    ctx.lineTo(splitX, originY);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    if (chart) chart.destroy();
+    chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Observed', data: observed.concat(Array(forecast.length).fill(null)), borderColor: colors.baseline, tension: 0.35 },
+                { label: 'Forecast', data: Array(observed.length).fill(null).concat(forecast), borderColor: colors.forecast, borderDash: [6,4], tension: 0.35 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#9aa4af' }, grid: { color: 'rgba(255,255,255,.06)' } },
+                y: { ticks: { color: '#9aa4af' }, grid: { color: 'rgba(255,255,255,.06)' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
 
     legend.innerHTML = '';
     addLegend('Observed', colors.baseline);
@@ -77,33 +59,49 @@ function addLegend(label, color) {
 
 function seedAlerts() {
     const data = [
-        { area: 'Central - A12', severity: 'High', type: 'Congestion', eta: '18 min', badge: 'risk-high' },
-        { area: 'North - Ring Rd', severity: 'Medium', type: 'Slowdown', eta: '9 min', badge: 'risk-med' },
-        { area: 'East - Bridge', severity: 'Info', type: 'Roadwork', eta: 'Today', badge: 'info' }
+        { area: 'Central - A12', severity: 'High', level: 'high', type: 'Congestion', eta: '18 min', badge: 'risk-high' },
+        { area: 'North - Ring Rd', severity: 'Medium', level: 'medium', type: 'Slowdown', eta: '9 min', badge: 'risk-med' },
+        { area: 'East - Bridge', severity: 'Info', level: 'low', type: 'Roadwork', eta: 'Today', badge: 'info' }
     ];
     alertsList.innerHTML = '';
-    data.forEach(a => {
+    const showHigh = document.getElementById('filterHigh')?.checked ?? true;
+    const showMed = document.getElementById('filterMed')?.checked ?? true;
+    const showLow = document.getElementById('filterLow')?.checked ?? true;
+    data.filter(a => (a.level === 'high' && showHigh) || (a.level === 'medium' && showMed) || (a.level === 'low' && showLow))
+        .forEach(a => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${a.type} • ${a.area}</span><span class="badge ${a.badge}">${a.severity} • ${a.eta}</span>`;
+        li.innerHTML = `<button class="link alert-open" data-area="${a.area}" data-type="${a.type}" data-sev="${a.severity}" data-eta="${a.eta}">${a.type} • ${a.area}</button><span class="badge ${a.badge}">${a.severity} • ${a.eta}</span>`;
         alertsList.appendChild(li);
     });
 }
 
 function seedPins() {
-    mapCanvas.innerHTML = '';
-    const w = mapCanvas.clientWidth; const h = mapCanvas.clientHeight;
-    const pins = [
-        { x: 0.62, y: 0.42, level: 'high' },
-        { x: 0.35, y: 0.55, level: 'medium' },
-        { x: 0.18, y: 0.30, level: 'low' }
+    // Initialize Leaflet map with dark tiles
+    if (!window.leafletMap) {
+        const center = [28.6139, 77.2090];
+        window.leafletMap = L.map('mapCanvas', { zoomControl: true, attributionControl: false }).setView(center, 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(window.leafletMap);
+    }
+
+    // Markers with levels
+    const markers = [
+        { lat: 28.635, lng: 77.22, level: 'high', text: 'Congestion • Central - A12' },
+        { lat: 28.70, lng: 77.10, level: 'medium', text: 'Slowdown • Ring Rd' },
+        { lat: 28.58, lng: 77.30, level: 'low', text: 'Roadwork • East Bridge' }
     ];
-    pins.forEach(p => {
-        const d = document.createElement('div');
-        d.className = `pin ${p.level}`;
-        d.style.left = `${Math.floor(p.x * w)}px`;
-        d.style.top = `${Math.floor(p.y * h)}px`;
-        mapCanvas.appendChild(d);
-    });
+    // Clear old
+    if (window.markerLayer) window.leafletMap.removeLayer(window.markerLayer);
+    const showHigh = document.getElementById('filterHigh')?.checked ?? true;
+    const showMed = document.getElementById('filterMed')?.checked ?? true;
+    const showLow = document.getElementById('filterLow')?.checked ?? true;
+    window.markerLayer = L.layerGroup(
+        markers.filter(m => (m.level === 'high' && showHigh) || (m.level === 'medium' && showMed) || (m.level === 'low' && showLow))
+            .map(m => L.circleMarker([m.lat, m.lng], {
+                radius: 8,
+                color: m.level === 'high' ? '#f87171' : m.level === 'medium' ? '#f59e0b' : '#2dd4bf',
+                fillOpacity: 0.8
+            }).bindPopup(m.text))
+    ).addTo(window.leafletMap);
 }
 
 // KPI shimmer / demo updates
@@ -132,5 +130,31 @@ drawChart();
 seedAlerts();
 seedPins();
 updateKpis();
+
+// Filters and interactions
+['filterHigh','filterMed','filterLow'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', seedAlerts);
+});
+
+if (routeForm) {
+    routeForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const from = document.getElementById('fromInput').value.trim();
+        const to = document.getElementById('toInput').value.trim();
+        const time = document.getElementById('timeInput').value;
+        const minutes = 15 + Math.floor(Math.random() * 25);
+        const risk = ['Low','Medium','High'][Math.floor(Math.random()*3)];
+        routeResult.textContent = `Best route • ${minutes} min • Risk: ${risk}${time ? ` • Depart ${time}` : ''}`;
+    });
+}
+
+// Basic modal for alert details (inline, non-blocking)
+alertsList?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.alert-open');
+    if (!btn) return;
+    const { area, type, sev, eta } = btn.dataset;
+    alert(`${type} at ${area}\nSeverity: ${sev}\nETA clear: ${eta}`);
+});
 
 
