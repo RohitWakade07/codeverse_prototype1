@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Traffic Forecasting Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="brand">
+            <div class="logo">↯</div>
+            <div class="title">
+                <h1>Flowcast</h1>
+                <p>Short‑term traffic forecasting (5–30 min)</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <label class="toggle">
+                <input type="checkbox" id="alertsToggle" checked>
+                <span>Alerts</span>
+            </label>
+            <button id="refreshBtn" class="ghost">Refresh</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="kpis" aria-label="Key performance indicators">
+            <div class="kpi">
+                <div class="kpi-label">Avg Speed</div>
+                <div class="kpi-value" id="kpiSpeed">48 km/h</div>
+                <div class="kpi-delta positive" id="kpiSpeedDelta">+3.1%</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Congestion Risk</div>
+                <div class="kpi-value" id="kpiRisk">Medium</div>
+                <div class="kpi-delta warning" id="kpiRiskDelta">Rising</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Incidents</div>
+                <div class="kpi-value" id="kpiIncidents">2</div>
+                <div class="kpi-delta neutral" id="kpiIncidentsDelta">Live</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Forecast Horizon</div>
+                <div class="kpi-value" id="kpiHorizon">30 min</div>
+                <div class="kpi-delta neutral">RF model</div>
+            </div>
+        </section>
+
+        <section class="panels">
+            <div class="panel chart" aria-label="Traffic forecast chart">
+                <div class="panel-header">
+                    <h2>Forecast</h2>
+                    <div class="filters">
+                        <select id="horizonSelect" aria-label="Forecast horizon">
+                            <option value="5">5 min</option>
+                            <option value="15">15 min</option>
+                            <option value="30" selected>30 min</option>
+                        </select>
+                        <select id="metricSelect" aria-label="Metric">
+                            <option value="speed" selected>Speed</option>
+                            <option value="volume">Volume</option>
+                            <option value="risk">Risk</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="forecastCanvas" width="800" height="300" role="img" aria-label="Line chart of forecast"></canvas>
+                <div class="legend" id="legend"></div>
+            </div>
+
+            <div class="panel map" aria-label="City map with alerts">
+                <div class="panel-header">
+                    <h2>Live Map</h2>
+                    <div class="filters">
+                        <select id="areaSelect" aria-label="Area">
+                            <option value="central" selected>Central</option>
+                            <option value="north">North</option>
+                            <option value="south">South</option>
+                            <option value="east">East</option>
+                            <option value="west">West</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="map-canvas" id="mapCanvas" aria-hidden="true"></div>
+                <ul class="alerts" id="alertsList" aria-live="polite"></ul>
+            </div>
+        </section>
+
+        <section class="explain" aria-label="Model explanation">
+            <h2>How it works</h2>
+            <p>
+                Live traffic streams (speed, volume, GPS) are fused with weather and incident data.
+                A Random Forest model produces 5–30 minute forecasts. When thresholds are exceeded,
+                alerts help prioritize routing and adaptive signals.
+            </p>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <span>Prototype UI • Dark theme</span>
+        <a href="#" id="exportBtn" class="ghost">Export snapshot</a>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
+
